@@ -10,6 +10,10 @@ as audio files. It uses the following AI models to achieve that:
 
 ## Requirements
 
+### ffmpeg installed
+
+Download [ffmpeg](https://ffmpeg.org/download.html) and install it.
+
 ### Hugging face token
 
 The script requires a token to the huggingface API for downloading
@@ -75,3 +79,5 @@ python verbatim/main.py --help
 
 Use whisper models variants according to [recommendations from OpenAI](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages).
 This can be set via the `--whisper-model` flag.
+From initial testing models smaller than "large" work fine for english. For
+satysfying results with other languages "large" is recommended.
