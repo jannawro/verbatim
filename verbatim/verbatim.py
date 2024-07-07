@@ -5,7 +5,8 @@ from typing import Callable, List, TypedDict
 from halo import Halo
 from pyannote.audio import Pipeline
 from pydub import AudioSegment
-import whisper
+import torch
+from whisper import Whisper, load_model
 
 
 CHUNKS_TEMP_DIR = "./tmp_chunks"
@@ -63,10 +64,15 @@ class Verbatim:
         self.formatter = formatter
         self.hugging_face_token = hugging_face_token
         self.output_style = output_style
-        self.whisper = whisper.load_model(whisper_model)
+        self.whisper_model = whisper_model
         self.speakers = speakers
 
         return
+
+    def whisper(self) -> Whisper:
+        use_cuda = torch.cuda.is_available()
+        device = torch.device("cuda" if use_cuda else "cpu")
+        return load_model(self.whisper_model).to(device)
 
     def find_chunks(self) -> List[Chunk]:
         pipeline = Pipeline.from_pretrained(
@@ -141,8 +147,8 @@ class Verbatim:
 
                 segment = audio[start_ms:end_ms]
 
-                output_file = f"{self.audio_chunks_dir}/chunk_{i+1}.{self.audio_format}"
-                segment.export(output_file, format=self.audio_format)
+                output_file = f"{self.audio_chunks_dir}/chunk_{i+1}.wav"
+                segment.export(output_file, format="wav")
                 chunk["file"] = output_file
             spinner.succeed("Splitting audio file finished!")
 
@@ -159,8 +165,8 @@ class Verbatim:
         if not chunks:
             return []
 
-        def transcribe_chunk(chunk: Chunk) -> Chunk:
-            result = self.whisper.transcribe(chunk["file"])
+        def transcribe_chunk(chunk: Chunk, model: Whisper) -> Chunk:
+            result = model.transcribe(chunk["file"])
             chunk["text"] = result["text"]
             return chunk
 
@@ -172,8 +178,9 @@ class Verbatim:
         spinner.start()
 
         try:
+            whisper = self.whisper()
             for chunk in chunks:
-                transcribed_chunks.append(transcribe_chunk(chunk))
+                transcribed_chunks.append(transcribe_chunk(chunk, whisper))
             spinner.succeed("Transcribing succeeded!")
 
         except Exception as e:

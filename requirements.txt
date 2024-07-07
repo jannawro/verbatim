@@ -1719,6 +1719,27 @@ torchaudio==2.3.1 ; python_version >= "3.12" and python_version < "4.0" \
 torchmetrics==1.4.0.post0 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:ab234216598e3fbd8d62ee4541a0e74e7e8fc935d099683af5b8da50f745b3c8 \
     --hash=sha256:ab9bcfe80e65dbabbddb6cecd9be21f1f1d5207bb74051ef95260740f2762358
+torchvision==0.18.1 ; python_version >= "3.12" and python_version < "4.0" \
+    --hash=sha256:02085a2ffc7461f5c0edb07d6f3455ee1806561f37736b903da820067eea58c7 \
+    --hash=sha256:0b3bda0aa5b416eeb547143b8eeaf17720bdba9cf516dc991aacb81811aa96a5 \
+    --hash=sha256:13d24d904f65e62d66a1e0c41faec630bc193867b8a4a01166769e8a8e8df8e9 \
+    --hash=sha256:2be6f0bf7c455c89a51a1dbb6f668d36c6edc479f49ac912d745d10df5715657 \
+    --hash=sha256:3e694e54b0548dad99c12af6bf0c8e4f3350137d391dcd19af22a1c5f89322b3 \
+    --hash=sha256:52f7436140045dc2239cdc502aa76b2bd8bd676d64244ff154d304aa69852046 \
+    --hash=sha256:54bfcd352abb396d5c9c237d200167c178bd136051b138e1e8ef46ce367c2773 \
+    --hash=sha256:573ff523c739405edb085f65cb592f482d28a30e29b0be4c4ba08040b3ae785f \
+    --hash=sha256:5c8366a1aeee49e9ea9e64b30d199debdf06b1bd7610a76165eb5d7869c3bde5 \
+    --hash=sha256:64a2662dbf30db9055d8b201d6e56f312a504e5ccd9d144c57c41622d3c524cb \
+    --hash=sha256:80b5d794dd0fdba787adc22f1a367a5ead452327686473cb260dd94364bc56a6 \
+    --hash=sha256:9077cf590cdb3a5e8fdf5cdb71797f8c67713f974cf0228ecb17fcd670ab42f9 \
+    --hash=sha256:9726c316a2501df8503e5a5dc46a631afd4c515a958972e5b7f7b9c87d2125c0 \
+    --hash=sha256:975b8594c0f5288875408acbb74946eea786c5b008d129c0d045d0ead23742bc \
+    --hash=sha256:b1c3864fa9378c88bce8ad0ef3599f4f25397897ce612e1c245c74b97092f35e \
+    --hash=sha256:ceb993a882f1ae7ae373ed39c28d7e3e802205b0e59a7ed84ef4028f0bba8d7f \
+    --hash=sha256:da83c8bbd34d8bee48bfa1d1b40e0844bc3cba10ed825a5a8cbe3ce7b62264cd \
+    --hash=sha256:ed6340b69a63a625e512a66127210d412551d9c5f2ad2978130c6a45bf56cd4a \
+    --hash=sha256:ef7bbbc60b38e831a75e547c66ca1784f2ac27100f9e4ddbe9614cef6cbcd942 \
+    --hash=sha256:f118d887bfde3a948a41d56587525401e5cac1b7db2eaca203324d6ed2b1caca
 tqdm==4.66.4 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:b75ca56b413b030bc3f00af51fd2c1a1a5eac6a0c1cca83cbb37a5c52abce644 \
     --hash=sha256:e4d936c9de8727928f3be6079590e97d9abfe8d39a590be678eb5919ffc186bb
