@@ -10,6 +10,10 @@ as audio files. It uses the following AI models to achieve that:
 
 ## Requirements
 
+### ffmpeg installed
+
+Download [ffmpeg](https://ffmpeg.org/download.html) and install it.
+
 ### Hugging face token
 
 The script requires a token to the huggingface API for downloading
@@ -33,21 +37,11 @@ git clone https://github.com/jannawro/verbatim.git
 
 ### Installing dependencies
 
-### Option1 - via pip
-
 ```bash
 cd verbatim
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-```
-
-### Option2 - via poetry
-
-```bash
-cd verbatim
-poetry install
-poetry shell
 ```
 
 ### Run
@@ -75,3 +69,13 @@ python verbatim/main.py --help
 
 Use whisper models variants according to [recommendations from OpenAI](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages).
 This can be set via the `--whisper-model` flag.
+From initial testing models smaller than "large" work fine for english. For
+satysfying results with other languages "large" is recommended.
+
+### Use the optimal number of --workers
+
+Verbatim will spin up the amount of threads specified by `--workers`. This
+number cannot be greater than the number of your CPU cores. Please note that
+each worker will also spin up a separate instance of Whisper for parallel
+processing. Use carefully togheter with `--whisper-model` to make sure you
+have enough resources to spin up the number of Whispers of designated size.

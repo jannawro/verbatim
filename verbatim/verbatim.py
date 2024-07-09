@@ -1,11 +1,14 @@
+import torch.multiprocessing as mp
 import os
 import shutil
 from typing import Callable, List, TypedDict
+import time
 
 from halo import Halo
 from pyannote.audio import Pipeline
 from pydub import AudioSegment
-import whisper
+import torch
+from whisper import Whisper, load_model
 
 
 CHUNKS_TEMP_DIR = "./tmp_chunks"
@@ -37,6 +40,42 @@ def format_xml_like(chunks: List[Chunk]) -> str:
     return "\n".join(formatted_chunks)
 
 
+def select_device() -> torch.device:
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+
+    return torch.device("cpu")
+
+
+def whisper(model_name: str, device: torch.device) -> Whisper:
+    return load_model(model_name, device)
+
+
+def whispers(model_name: str, device: torch.device, n: int) -> List[Whisper]:
+    return [whisper(model_name, device)] * n
+
+
+def transcribe_chunk(chunk: Chunk, model: Whisper, device: torch.device) -> Chunk:
+    result = model.to(device).transcribe(chunk["file"])
+    chunk["text"] = result["text"]
+    return chunk
+
+
+def choose_model(models: List[Whisper], index: int) -> Whisper:
+    if not models:
+        raise ValueError("The models list cannot be empty")
+
+    num_models = len(models)
+
+    if index < num_models:
+        return models[index]
+    else:
+        return models[index % num_models]
+
+
 class Verbatim:
     def __init__(
         self,
@@ -47,6 +86,7 @@ class Verbatim:
         output_style: str,
         whisper_model: str,
         speakers: int,
+        workers: int,
     ) -> None:
         os.makedirs(CHUNKS_TEMP_DIR, exist_ok=True)
         self.audio_chunks_dir = CHUNKS_TEMP_DIR
@@ -63,18 +103,20 @@ class Verbatim:
         self.formatter = formatter
         self.hugging_face_token = hugging_face_token
         self.output_style = output_style
-        self.whisper = whisper.load_model(whisper_model)
+        self.whisper_model = whisper_model
         self.speakers = speakers
+        self.workers = workers
 
         return
 
     def find_chunks(self) -> List[Chunk]:
         pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1", use_auth_token=self.hugging_face_token
-        )
+        ).to(select_device())
 
         chunks: List[Chunk] = []
 
+        start_time = time.time()
         spinner = Halo(text="Finding speakers and lines timestamps...", spinner="dots")
         spinner.start()
 
@@ -90,10 +132,11 @@ class Verbatim:
                         text="",
                     )
                 )
-            spinner.succeed("Finding chunks complete!")
+            duration = time.time() - start_time
+            spinner.succeed(f"Finding chunks complete! (took {duration:.2f} seconds)")
 
-        except Exception as e:
-            spinner.fail(f"An error occured while finding chunks: {e}")
+        except Exception:
+            spinner.fail(f"An error occured while finding chunks.")
             raise
 
         finally:
@@ -131,6 +174,7 @@ class Verbatim:
 
         audio = AudioSegment.from_file(self.audio_file)
 
+        start_time = time.time()
         spinner = Halo(text="Splitting the audio file into chunks...", spinner="dots")
         spinner.start()
 
@@ -141,13 +185,16 @@ class Verbatim:
 
                 segment = audio[start_ms:end_ms]
 
-                output_file = f"{self.audio_chunks_dir}/chunk_{i+1}.{self.audio_format}"
-                segment.export(output_file, format=self.audio_format)
+                output_file = f"{self.audio_chunks_dir}/chunk_{i+1}.wav"
+                segment.export(output_file, format="wav")
                 chunk["file"] = output_file
-            spinner.succeed("Splitting audio file finished!")
+            duration = time.time() - start_time
+            spinner.succeed(
+                f"Splitting audio file finished! (took {duration:.2f} seconds)"
+            )
 
-        except Exception as e:
-            spinner.fail(f"An error occured while splitting audio file chunks: {e}")
+        except Exception:
+            spinner.fail(f"An error occured while splitting audio file chunks.")
             raise
 
         finally:
@@ -159,25 +206,32 @@ class Verbatim:
         if not chunks:
             return []
 
-        def transcribe_chunk(chunk: Chunk) -> Chunk:
-            result = self.whisper.transcribe(chunk["file"])
-            chunk["text"] = result["text"]
-            return chunk
-
         transcribed_chunks: List[Chunk] = []
 
+        start_time = time.time()
         spinner = Halo(
             text="Transcribing the audio chunks into text...", spinner="dots"
         )
         spinner.start()
 
         try:
-            for chunk in chunks:
-                transcribed_chunks.append(transcribe_chunk(chunk))
-            spinner.succeed("Transcribing succeeded!")
+            device = select_device()
+            models = whispers(self.whisper_model, torch.device("cpu"), self.workers)
+            mp.set_start_method("spawn", force=True)
+            with mp.Pool(self.workers) as pool:
+                transcribed_chunks = pool.starmap(
+                    transcribe_chunk,
+                    [
+                        (chunk, choose_model(models, i), device)
+                        for i, chunk in enumerate(chunks)
+                    ],
+                )
 
-        except Exception as e:
-            spinner.fail(f"An error occured transcribing the audio: {e}")
+            duration = time.time() - start_time
+            spinner.succeed(f"Transcribing succeeded! (took {duration:.2f} seconds)")
+
+        except Exception:
+            spinner.fail(f"An error occured while transcribing the audio.")
             raise
 
         finally:
@@ -196,7 +250,7 @@ class Verbatim:
             case "stdout":
                 print(text)
             case filename:
-                with open(filename, "w") as file:
+                with open(filename, "w", encoding="utf-8") as file:
                     file.write(text)
         return
 
