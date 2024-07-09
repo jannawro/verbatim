@@ -48,6 +48,13 @@ def main():
         required=True,
         help="Number of speakers in the audio file.",
     )
+    parser.add_argument(
+        "--workers",
+        default=1,
+        type=int,
+        required=False,
+        help="Number of threads for processing audio to text transcription. Please note that apart from threads this will spin up separate instances of Whisper. Use carefully in combination with '--whisper-model' to make sure you have enough resources. (Default is 1)",
+    )
 
     args = parser.parse_args()
     print("Parsed arguments:")
@@ -71,6 +78,7 @@ def main():
         output_style=args.output,
         whisper_model=args.whisper_model,
         speakers=args.speakers,
+        workers=args.workers,
     )
 
     try:
