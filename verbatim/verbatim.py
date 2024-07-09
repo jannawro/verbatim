@@ -1,4 +1,4 @@
-from multiprocessing import Pool
+import torch.multiprocessing as mp
 import os
 import shutil
 from typing import Callable, List, TypedDict
@@ -51,15 +51,29 @@ def select_device() -> torch.device:
 
 
 def whisper(model_name: str, device: torch.device) -> Whisper:
-    return load_model(model_name).to(device)
+    return load_model(model_name, device)
 
 
-def transcribe_chunk(chunk: Chunk, whisper_model: str) -> Chunk:
-    device = select_device()
-    model = whisper(whisper_model, device)
-    result = model.transcribe(chunk["file"])
+def whispers(model_name: str, device: torch.device, n: int) -> List[Whisper]:
+    return [whisper(model_name, device)] * n
+
+
+def transcribe_chunk(chunk: Chunk, model: Whisper, device: torch.device) -> Chunk:
+    result = model.to(device).transcribe(chunk["file"])
     chunk["text"] = result["text"]
     return chunk
+
+
+def choose_model(models: List[Whisper], index: int) -> Whisper:
+    if not models:
+        raise ValueError("The models list cannot be empty")
+
+    num_models = len(models)
+
+    if index < num_models:
+        return models[index]
+    else:
+        return models[index % num_models]
 
 
 class Verbatim:
@@ -94,11 +108,6 @@ class Verbatim:
         self.workers = workers
 
         return
-
-    def whisper(self) -> Whisper:
-        use_cuda = torch.cuda.is_available()
-        device = torch.device("cuda" if use_cuda else "cpu")
-        return load_model(self.whisper_model).to(device)
 
     def find_chunks(self) -> List[Chunk]:
         pipeline = Pipeline.from_pretrained(
@@ -206,9 +215,16 @@ class Verbatim:
         spinner.start()
 
         try:
-            with Pool(self.workers) as pool:
+            device = select_device()
+            models = whispers(self.whisper_model, torch.device("cpu"), self.workers)
+            mp.set_start_method("spawn", force=True)
+            with mp.Pool(self.workers) as pool:
                 transcribed_chunks = pool.starmap(
-                    transcribe_chunk, [(chunk, self.whisper_model) for chunk in chunks]
+                    transcribe_chunk,
+                    [
+                        (chunk, choose_model(models, i), device)
+                        for i, chunk in enumerate(chunks)
+                    ],
                 )
 
             duration = time.time() - start_time
